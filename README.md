@@ -58,7 +58,7 @@ npm install -g pm2
 
 2. 앱 실행:
 ```bash
-pm2 start server.js --name item-finder
+pm2 start server-https.js --name item-finder
 ```
 
 3. 부팅 시 자동 실행 설정:
