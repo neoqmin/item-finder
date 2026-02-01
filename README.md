@@ -1,6 +1,7 @@
 # 물건 찾기 앱 🔍
 
 음성으로 물건의 위치를 찾을 수 있는 웹 앱입니다.
+**SQLite 데이터베이스** 사용으로 안정성과 성능이 향상되었습니다!
 
 ## 설치 방법
 
@@ -14,7 +15,17 @@ cd /path/to/item-finder
 npm install
 ```
 
-3. 서버 실행:
+3. (선택) 기존 JSON 데이터가 있다면 마이그레이션:
+```bash
+npm run migrate
+```
+
+4. HTTPS 인증서 생성 (음성 인식용):
+```bash
+npm run generate-cert
+```
+
+5. 서버 실행:
 ```bash
 npm start
 ```
@@ -70,3 +81,39 @@ pm2 save
 ## 포트 변경
 
 기본 포트는 3001입니다. 변경하려면 `server.js` 파일의 `PORT` 값을 수정하세요.
+
+## 데이터베이스
+
+### SQLite 사용
+- 모든 데이터는 `items.db` 파일에 저장됩니다
+- JSON보다 안정적이고 빠릅니다
+- 동시 접근 안전
+- 백업이 쉽습니다 (파일 하나만 복사)
+
+### 백업 방법
+```bash
+# 데이터베이스 백업
+cp items.db items.db.backup
+
+# 복원
+cp items.db.backup items.db
+```
+
+### 기존 JSON 데이터 마이그레이션
+기존에 `items.json` 파일이 있다면:
+```bash
+npm run migrate
+```
+자동으로 모든 데이터가 SQLite로 이전되고, JSON 파일은 `.backup`으로 백업됩니다.
+
+### 데이터베이스 구조
+```sql
+CREATE TABLE items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  location TEXT NOT NULL,
+  image TEXT,
+  created_at DATETIME,
+  updated_at DATETIME
+);
+```
