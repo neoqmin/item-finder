@@ -1,0 +1,18 @@
+{
+  "name": "item-finder",
+  "version": "1.0.0",
+  "description": "음성으로 물건 위치를 찾는 웹 앱",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server-https.js",
+    "http-only": "node server.js",
+    "generate-cert": "bash generate-cert.sh"
+  },
+  "keywords": ["item", "finder", "voice", "search"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}

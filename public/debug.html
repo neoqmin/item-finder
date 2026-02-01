@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>물건 찾기 - 디버그 모드</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section-title {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .debug-log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .debug-log div {
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .debug-log .error {
+            color: #ff4444;
+        }
+
+        .debug-log .success {
+            color: #44ff44;
+        }
+
+        .debug-log .info {
+            color: #44aaff;
+        }
+
+        .debug-log .timestamp {
+            color: #888;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-voice {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-voice:hover {
+            background: #059669;
+        }
+
+        .btn-voice.listening {
+            background: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .btn-clear {
+            background: #6b7280;
+            color: white;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        .voice-status {
+            text-align: center;
+            padding: 15px;
+            background: #f3f4f6;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 0;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s;
+            position: relative;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close-btn {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            color: #999;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1;
+            transition: color 0.3s;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .result-container {
+            padding: 40px 30px 30px;
+            text-align: center;
+        }
+
+        .result-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: bounce 0.6s;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .result-image {
+            width: 100%;
+            max-width: 300px;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 15px;
+            margin: 20px auto;
+            display: block;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .result-item-name {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .result-location {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-location-icon {
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .result-message {
+            font-size: 18px;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        .not-found-container {
+            padding: 40px 30px 30px;
+            text-align: center;
+        }
+
+        .not-found-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .not-found-title {
+            font-size: 24px;
+            color: #ef4444;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .not-found-message {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .modal-actions {
+            padding: 20px 30px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .modal-btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .modal-btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .modal-btn-secondary:hover {
+            background: #d1d5db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔍 물건 찾기 - 디버그 모드</h1>
+            <p class="subtitle">음성 검색 문제 진단용 페이지</p>
+
+            <div class="section-title">🎤 음성 검색 테스트</div>
+            <div class="voice-status" id="voiceStatus">버튼을 눌러 말씀해주세요</div>
+            <button class="btn-voice" id="voiceBtn" onclick="startVoiceSearch()">
+                <span>🎤</span>
+                <span id="voiceBtnText">음성 검색 시작</span>
+            </button>
+
+            <div class="section-title">📋 디버그 로그</div>
+            <button class="btn-clear" onclick="clearLogs()">로그 지우기</button>
+            <div class="debug-log" id="debugLog">
+                <div class="info">로그가 여기에 표시됩니다...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 검색 결과 팝업 모달 -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        let recognition = null;
+        let isListening = false;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString('ko-KR');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('debugLog').innerHTML = '<div class="info">로그 지우기 완료</div>';
+        }
+
+        // 음성 인식 초기화
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            log('✅ 음성 인식 지원 확인됨', 'success');
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ko-KR';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                log('🎤 음성 인식 시작됨', 'info');
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                const confidence = event.results[0][0].confidence;
+                
+                log(`🗣️ 음성 인식 결과: "${transcript}"`, 'success');
+                log(`📊 인식 신뢰도: ${(confidence * 100).toFixed(1)}%`, 'info');
+                
+                document.getElementById('voiceStatus').textContent = `들은 내용: "${transcript}"`;
+                searchItem(transcript);
+            };
+
+            recognition.onerror = function(event) {
+                log(`❌ 음성 인식 오류: ${event.error}`, 'error');
+                
+                let errorMsg = '';
+                switch(event.error) {
+                    case 'no-speech':
+                        errorMsg = '음성이 감지되지 않았습니다';
+                        break;
+                    case 'audio-capture':
+                        errorMsg = '마이크를 찾을 수 없습니다';
+                        break;
+                    case 'not-allowed':
+                        errorMsg = '마이크 권한이 거부되었습니다';
+                        break;
+                    default:
+                        errorMsg = event.error;
+                }
+                
+                document.getElementById('voiceStatus').textContent = `오류: ${errorMsg}`;
+                stopListening();
+            };
+
+            recognition.onend = function() {
+                log('⏹️ 음성 인식 종료됨', 'info');
+                stopListening();
+            };
+        } else {
+            log('❌ 이 브라우저는 음성 인식을 지원하지 않습니다', 'error');
+            document.getElementById('voiceStatus').textContent = '음성 인식 미지원';
+        }
+
+        function startVoiceSearch() {
+            if (!recognition) {
+                log('❌ 음성 인식을 사용할 수 없습니다', 'error');
+                return;
+            }
+
+            if (isListening) {
+                log('⏸️ 음성 인식 중지 요청', 'info');
+                recognition.stop();
+                return;
+            }
+
+            isListening = true;
+            const btn = document.getElementById('voiceBtn');
+            btn.classList.add('listening');
+            document.getElementById('voiceBtnText').textContent = '듣는 중... (다시 누르면 중지)';
+            document.getElementById('voiceStatus').textContent = '듣고 있습니다... 말씀해주세요';
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                log(`❌ 음성 인식 시작 실패: ${error}`, 'error');
+                stopListening();
+            }
+        }
+
+        function stopListening() {
+            isListening = false;
+            const btn = document.getElementById('voiceBtn');
+            btn.classList.remove('listening');
+            document.getElementById('voiceBtnText').textContent = '음성 검색 시작';
+        }
+
+        async function searchItem(query) {
+            log(`🔍 검색 시작: "${query}"`, 'info');
+            
+            try {
+                // 검색어 처리
+                let itemName = query
+                    .replace(/어디있어\??/gi, '')
+                    .replace(/어디야\??/gi, '')
+                    .replace(/어디에\s*있어\??/gi, '')
+                    .replace(/어디에\s*있나\??/gi, '')
+                    .replace(/어디\s*있어\??/gi, '')
+                    .replace(/어디\s*있나\??/gi, '')
+                    .replace(/찾아줘/gi, '')
+                    .replace(/찾아봐/gi, '')
+                    .replace(/어디지\??/gi, '')
+                    .replace(/이\s*어디/gi, '')
+                    .replace(/가\s*어디/gi, '')
+                    .replace(/은\s*어디/gi, '')
+                    .replace(/는\s*어디/gi, '')
+                    .replace(/을\s*찾/gi, '')
+                    .replace(/를\s*찾/gi, '')
+                    .trim();
+
+                log(`📝 추출된 물건 이름: "${itemName}"`, 'info');
+
+                if (!itemName) {
+                    log('⚠️ 물건 이름을 추출할 수 없습니다', 'error');
+                    document.getElementById('voiceStatus').textContent = '물건 이름을 명확히 말씀해주세요';
+                    return;
+                }
+
+                log(`🌐 서버에 검색 요청: /api/search?q=${encodeURIComponent(itemName)}`, 'info');
+                
+                const response = await fetch(`/api/search?q=${encodeURIComponent(itemName)}`);
+                
+                log(`📡 서버 응답 상태: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                
+                log(`📦 서버 응답 데이터: ${JSON.stringify(data)}`, 'info');
+
+                if (data.found) {
+                    const message = `${data.name}은(는) ${data.location}에 있습니다.`;
+                    log(`✅ 검색 성공: ${message}`, 'success');
+                    document.getElementById('voiceStatus').textContent = message;
+                    showResultModal(data.name, data.location, data.image);
+                    speak(message);
+                } else {
+                    const message = `${itemName}을(를) 찾을 수 없습니다.`;
+                    log(`⚠️ 검색 실패: ${message}`, 'error');
+                    document.getElementById('voiceStatus').textContent = message;
+                    showNotFoundModal(itemName);
+                    speak(message + ' 먼저 등록해주세요.');
+                }
+            } catch (error) {
+                log(`❌ 검색 오류: ${error.message}`, 'error');
+                document.getElementById('voiceStatus').textContent = '검색 오류 발생';
+            }
+        }
+
+        function showResultModal(name, location, image) {
+            log(`🎨 결과 팝업 표시`, 'info');
+            
+            const modal = document.getElementById('resultModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalBody.innerHTML = `
+                <div class="result-container">
+                    <div class="result-icon">✅</div>
+                    <div class="result-item-name">${name}</div>
+                    ${image ? `<img src="${image}" alt="${name}" class="result-image">` : ''}
+                    <div class="result-location">
+                        <span class="result-location-icon">📍</span>
+                        ${location}
+                    </div>
+                    <div class="result-message">에 있습니다</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-primary" onclick="repeatVoice('${name}은(는) ${location}에 있습니다.')">🔊 다시 듣기</button>
+                    <button class="modal-btn modal-btn-secondary" onclick="closeModal()">확인</button>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+            
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            };
+        }
+
+        function showNotFoundModal(itemName) {
+            log(`🎨 찾을 수 없음 팝업 표시`, 'info');
+            
+            const modal = document.getElementById('resultModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalBody.innerHTML = `
+                <div class="not-found-container">
+                    <div class="not-found-icon">🔍</div>
+                    <div class="not-found-title">${itemName}을(를) 찾을 수 없습니다</div>
+                    <div class="not-found-message">
+                        등록된 물건 목록에서 "${itemName}"을(를) 찾을 수 없어요.<br>
+                        메인 페이지에서 먼저 물건을 등록해주세요.
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-primary" onclick="window.location.href='/';">메인 페이지로 이동</button>
+                    <button class="modal-btn modal-btn-secondary" onclick="closeModal()">닫기</button>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+            
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            };
+        }
+
+        function closeModal() {
+            log(`❌ 팝업 닫기`, 'info');
+            const modal = document.getElementById('resultModal');
+            modal.style.display = 'none';
+        }
+
+        function repeatVoice(text) {
+            log(`🔊 음성 재생: "${text}"`, 'info');
+            speak(text);
+        }
+
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        function speak(text) {
+            log(`🔊 음성 출력 시도: "${text}"`, 'info');
+            
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ko-KR';
+                utterance.rate = 0.9;
+                utterance.pitch = 1;
+                
+                utterance.onstart = function() {
+                    log('▶️ 음성 출력 시작', 'success');
+                };
+                
+                utterance.onend = function() {
+                    log('⏹️ 음성 출력 완료', 'success');
+                };
+                
+                utterance.onerror = function(event) {
+                    log(`❌ 음성 출력 오류: ${event.error}`, 'error');
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                log('❌ 음성 합성을 지원하지 않습니다', 'error');
+            }
+        }
+
+        // 페이지 로드 완료
+        log('✅ 디버그 페이지 로드 완료', 'success');
+        log('💡 음성 검색 버튼을 눌러 테스트하세요', 'info');
+    </script>
+</body>
+</html>

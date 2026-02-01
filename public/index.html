@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>물건 찾기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section-title {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="file"] {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .image-preview {
+            margin-top: 10px;
+            min-height: 40px;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-voice {
+            background: #10b981;
+            color: white;
+            position: relative;
+        }
+
+        .btn-voice:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-voice.listening {
+            background: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .mic-icon {
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .message.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .items-list {
+            margin-top: 20px;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            gap: 15px;
+        }
+
+        .item-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .item-location {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn-delete {
+            padding: 8px 15px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            width: auto;
+            margin: 0;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .voice-status {
+            text-align: center;
+            padding: 10px;
+            font-size: 14px;
+            color: #666;
+            min-height: 40px;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 0;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s;
+            position: relative;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close-btn {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            color: #999;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1;
+            transition: color 0.3s;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .result-container {
+            padding: 40px 30px 30px;
+            text-align: center;
+        }
+
+        .result-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: bounce 0.6s;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .result-image {
+            width: 100%;
+            max-width: 300px;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 15px;
+            margin: 20px auto;
+            display: block;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .result-item-name {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .result-location {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-location-icon {
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .result-message {
+            font-size: 18px;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        .not-found-container {
+            padding: 40px 30px 30px;
+            text-align: center;
+        }
+
+        .not-found-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .not-found-title {
+            font-size: 24px;
+            color: #ef4444;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .not-found-message {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .modal-actions {
+            padding: 20px 30px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .modal-btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .modal-btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .modal-btn-secondary:hover {
+            background: #d1d5db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔍 물건 찾기</h1>
+            <p class="subtitle">물건의 위치를 저장하고 음성으로 찾아보세요</p>
+
+            <div id="message" class="message"></div>
+
+            <div class="section-title">📦 물건 등록</div>
+            <div class="input-group">
+                <label for="itemName">물건 이름</label>
+                <input type="text" id="itemName" placeholder="예: 잼, 리모컨, 열쇠">
+            </div>
+            <div class="input-group">
+                <label for="itemLocation">위치</label>
+                <input type="text" id="itemLocation" placeholder="예: 찬장, 거실 테이블, 현관">
+            </div>
+            <div class="input-group">
+                <label for="itemImage">사진 (선택)</label>
+                <input type="file" id="itemImage" accept="image/*" capture="environment">
+                <div id="imagePreview" class="image-preview"></div>
+            </div>
+            <button class="btn-primary" onclick="addItem()">등록하기</button>
+        </div>
+
+        <div class="card">
+            <div class="section-title">🎤 음성으로 물건 찾기</div>
+            <div class="voice-status" id="voiceStatus">버튼을 눌러 말씀해주세요</div>
+            <button class="btn-voice" id="voiceBtn" onclick="startVoiceSearch()">
+                <span class="mic-icon">🎤</span>
+                <span id="voiceBtnText">음성 검색 시작</span>
+            </button>
+        </div>
+
+        <div class="card">
+            <div class="section-title">📋 등록된 물건 목록</div>
+            <div id="itemsList" class="items-list">
+                <div class="empty-state">등록된 물건이 없습니다</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 검색 결과 팝업 모달 -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        let recognition = null;
+        let isListening = false;
+
+        // 이미지 미리보기
+        document.getElementById('itemImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('imagePreview');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="미리보기">`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '';
+            }
+        });
+
+        // 음성 인식 초기화
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ko-KR';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                console.log('음성 인식 결과:', transcript);
+                document.getElementById('voiceStatus').textContent = `들은 내용: "${transcript}"`;
+                searchItem(transcript);
+            };
+
+            recognition.onerror = function(event) {
+                console.error('음성 인식 오류:', event.error);
+                let errorMsg = '음성 인식 오류: ';
+                
+                switch(event.error) {
+                    case 'no-speech':
+                        errorMsg += '음성이 감지되지 않았습니다.';
+                        break;
+                    case 'audio-capture':
+                        errorMsg += '마이크를 찾을 수 없습니다.';
+                        break;
+                    case 'not-allowed':
+                        errorMsg += '마이크 권한이 거부되었습니다. Safari 설정을 확인해주세요.';
+                        break;
+                    default:
+                        errorMsg += event.error;
+                }
+                
+                showMessage(errorMsg, 'error');
+                document.getElementById('voiceStatus').textContent = errorMsg;
+                stopListening();
+            };
+
+            recognition.onend = function() {
+                stopListening();
+            };
+        }
+
+        function startVoiceSearch() {
+            if (!recognition) {
+                showMessage('이 브라우저는 음성 인식을 지원하지 않습니다. Safari나 Chrome을 사용해주세요.', 'error');
+                return;
+            }
+
+            if (isListening) {
+                recognition.stop();
+                return;
+            }
+
+            isListening = true;
+            const btn = document.getElementById('voiceBtn');
+            btn.classList.add('listening');
+            document.getElementById('voiceBtnText').textContent = '듣는 중... (다시 누르면 중지)';
+            document.getElementById('voiceStatus').textContent = '듣고 있습니다... 말씀해주세요';
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('음성 인식 시작 오류:', error);
+                stopListening();
+            }
+        }
+
+        function stopListening() {
+            isListening = false;
+            const btn = document.getElementById('voiceBtn');
+            btn.classList.remove('listening');
+            document.getElementById('voiceBtnText').textContent = '음성 검색 시작';
+        }
+
+        async function searchItem(query) {
+            console.log('검색 시작:', query);
+            
+            try {
+                // 검색어에서 물건 이름 추출 (더 많은 패턴 지원)
+                let itemName = query
+                    .replace(/어디있어\??/gi, '')
+                    .replace(/어디야\??/gi, '')
+                    .replace(/어디에\s*있어\??/gi, '')
+                    .replace(/어디에\s*있나\??/gi, '')
+                    .replace(/어디\s*있어\??/gi, '')
+                    .replace(/어디\s*있나\??/gi, '')
+                    .replace(/찾아줘/gi, '')
+                    .replace(/찾아봐/gi, '')
+                    .replace(/어디지\??/gi, '')
+                    .replace(/이\s*어디/gi, '')
+                    .replace(/가\s*어디/gi, '')
+                    .replace(/은\s*어디/gi, '')
+                    .replace(/는\s*어디/gi, '')
+                    .replace(/을\s*찾/gi, '')
+                    .replace(/를\s*찾/gi, '')
+                    .trim();
+
+                console.log('추출된 물건 이름:', itemName);
+
+                if (!itemName) {
+                    showMessage('물건 이름을 인식할 수 없습니다. 다시 시도해주세요.', 'error');
+                    document.getElementById('voiceStatus').textContent = '물건 이름을 명확히 말씀해주세요';
+                    return;
+                }
+
+                const response = await fetch(`/api/search?q=${encodeURIComponent(itemName)}`);
+                const data = await response.json();
+                
+                console.log('검색 결과:', data);
+
+                if (data.found) {
+                    const message = `${data.name}은(는) ${data.location}에 있습니다.`;
+                    showResultModal(data.name, data.location, data.image);
+                    speak(message);
+                    document.getElementById('voiceStatus').textContent = message;
+                } else {
+                    const message = `${itemName}을(를) 찾을 수 없습니다. 먼저 등록해주세요.`;
+                    showNotFoundModal(itemName);
+                    speak(message);
+                    document.getElementById('voiceStatus').textContent = message;
+                }
+            } catch (error) {
+                console.error('검색 오류:', error);
+                showMessage('검색 중 오류가 발생했습니다.', 'error');
+                document.getElementById('voiceStatus').textContent = '검색 오류 발생';
+            }
+        }
+
+        function showResultModal(name, location, image) {
+            const modal = document.getElementById('resultModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalBody.innerHTML = `
+                <div class="result-container">
+                    <div class="result-icon">✅</div>
+                    <div class="result-item-name">${name}</div>
+                    ${image ? `<img src="${image}" alt="${name}" class="result-image">` : ''}
+                    <div class="result-location">
+                        <span class="result-location-icon">📍</span>
+                        ${location}
+                    </div>
+                    <div class="result-message">에 있습니다</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-primary" onclick="repeatVoice('${name}은(는) ${location}에 있습니다.')">🔊 다시 듣기</button>
+                    <button class="modal-btn modal-btn-secondary" onclick="closeModal()">확인</button>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+            
+            // 모달 외부 클릭 시 닫기
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            };
+        }
+
+        function showNotFoundModal(itemName) {
+            const modal = document.getElementById('resultModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalBody.innerHTML = `
+                <div class="not-found-container">
+                    <div class="not-found-icon">🔍</div>
+                    <div class="not-found-title">${itemName}을(를) 찾을 수 없습니다</div>
+                    <div class="not-found-message">
+                        등록된 물건 목록에서 "${itemName}"을(를) 찾을 수 없어요.<br>
+                        먼저 물건을 등록해주세요.
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-primary" onclick="closeModal(); document.getElementById('itemName').focus();">물건 등록하기</button>
+                    <button class="modal-btn modal-btn-secondary" onclick="closeModal()">닫기</button>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+            
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            };
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('resultModal');
+            modal.style.display = 'none';
+        }
+
+        function repeatVoice(text) {
+            speak(text);
+        }
+
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        function speak(text) {
+            console.log('음성 출력 시도:', text);
+            
+            if ('speechSynthesis' in window) {
+                // 기존 음성 중지
+                window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ko-KR';
+                utterance.rate = 0.9;
+                utterance.pitch = 1;
+                
+                utterance.onstart = function() {
+                    console.log('음성 출력 시작');
+                };
+                
+                utterance.onend = function() {
+                    console.log('음성 출력 완료');
+                };
+                
+                utterance.onerror = function(event) {
+                    console.error('음성 출력 오류:', event);
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.warn('음성 합성을 지원하지 않는 브라우저입니다.');
+            }
+        }
+
+        async function addItem() {
+            const name = document.getElementById('itemName').value.trim();
+            const location = document.getElementById('itemLocation').value.trim();
+            const imageFile = document.getElementById('itemImage').files[0];
+
+            if (!name || !location) {
+                showMessage('물건 이름과 위치를 모두 입력해주세요.', 'error');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('name', name);
+                formData.append('location', location);
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                }
+
+                const response = await fetch('/api/items', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showMessage(`${name}이(가) ${location}에 등록되었습니다.`, 'success');
+                    document.getElementById('itemName').value = '';
+                    document.getElementById('itemLocation').value = '';
+                    document.getElementById('itemImage').value = '';
+                    document.getElementById('imagePreview').innerHTML = '';
+                    loadItems();
+                } else {
+                    showMessage('등록 중 오류가 발생했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('등록 오류:', error);
+                showMessage('등록 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        async function deleteItem(name) {
+            if (!confirm(`${name}을(를) 삭제하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/items/${encodeURIComponent(name)}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showMessage(`${name}이(가) 삭제되었습니다.`, 'success');
+                    loadItems();
+                } else {
+                    showMessage('삭제 중 오류가 발생했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('삭제 오류:', error);
+                showMessage('삭제 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        async function loadItems() {
+            try {
+                const response = await fetch('/api/items');
+                const items = await response.json();
+                
+                const listDiv = document.getElementById('itemsList');
+                
+                if (Object.keys(items).length === 0) {
+                    listDiv.innerHTML = '<div class="empty-state">등록된 물건이 없습니다</div>';
+                    return;
+                }
+
+                listDiv.innerHTML = Object.entries(items)
+                    .map(([name, data]) => {
+                        const location = typeof data === 'string' ? data : data.location;
+                        const image = typeof data === 'object' ? data.image : null;
+                        
+                        return `
+                            <div class="item">
+                                ${image ? `<img src="${image}" alt="${name}" class="item-image">` : ''}
+                                <div class="item-info">
+                                    <div class="item-name">${name}</div>
+                                    <div class="item-location">📍 ${location}</div>
+                                </div>
+                                <button class="btn-delete" onclick="deleteItem('${name}')">삭제</button>
+                            </div>
+                        `;
+                    }).join('');
+            } catch (error) {
+                console.error('목록 로드 오류:', error);
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type} show`;
+            
+            setTimeout(() => {
+                messageDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        // 페이지 로드 시 목록 불러오기
+        loadItems();
+
+        // Enter 키로 등록
+        document.getElementById('itemLocation').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addItem();
+            }
+        });
+    </script>
+</body>
+</html>
