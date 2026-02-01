@@ -1,19 +1,23 @@
 const express = require('express');
+const https = require('https');
+const http = require('http');
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsPromises = require('fs').promises;
 const multer = require('multer');
+const db = require('./database');
 
 const app = express();
-const PORT = 3001;
-const DATA_FILE = path.join(__dirname, 'items.json');
+const HTTP_PORT = 3001;
+const HTTPS_PORT = 3443;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 
 // 업로드 디렉토리 생성
 async function initUploadDir() {
   try {
-    await fs.access(UPLOAD_DIR);
+    await fsPromises.access(UPLOAD_DIR);
   } catch {
-    await fs.mkdir(UPLOAD_DIR);
+    await fsPromises.mkdir(UPLOAD_DIR);
   }
 }
 
@@ -48,21 +52,13 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
-// 데이터 파일 초기화
-async function initDataFile() {
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    await fs.writeFile(DATA_FILE, JSON.stringify({}));
-  }
-}
-
 // 물건 목록 조회
 app.get('/api/items', async (req, res) => {
   try {
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    res.json(JSON.parse(data));
+    const items = await db.getAllItems();
+    res.json(items);
   } catch (error) {
+    console.error('목록 조회 오류:', error);
     res.status(500).json({ error: '데이터를 읽을 수 없습니다.' });
   }
 });
@@ -72,30 +68,36 @@ app.post('/api/items', upload.single('image'), async (req, res) => {
   try {
     const { name, location } = req.body;
     
+    console.log('=== 물건 등록 요청 ===');
+    console.log('이름:', name);
+    console.log('위치:', location);
+    console.log('이미지:', req.file ? req.file.filename : '없음');
+    
     if (!name || !location) {
       return res.status(400).json({ error: '물건 이름과 위치를 모두 입력해주세요.' });
     }
 
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    const items = JSON.parse(data);
-    
-    // 기존 아이템이 있으면 이전 이미지 삭제
-    if (items[name.toLowerCase()] && items[name.toLowerCase()].image) {
+    // 기존 아이템 확인 (이전 이미지 삭제용)
+    const existing = await db.getItem(name);
+    if (existing && existing.image) {
       try {
-        await fs.unlink(path.join(__dirname, items[name.toLowerCase()].image));
+        await fsPromises.unlink(path.join(__dirname, existing.image));
+        console.log('이전 이미지 삭제:', existing.image);
       } catch (err) {
         console.error('이전 이미지 삭제 실패:', err);
       }
     }
     
-    items[name.toLowerCase()] = {
-      location,
-      image: req.file ? `/uploads/${req.file.filename}` : null,
-      updatedAt: new Date().toISOString()
-    };
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : (existing ? existing.image : null);
+    const result = await db.upsertItem(name, location, imagePath);
     
-    await fs.writeFile(DATA_FILE, JSON.stringify(items, null, 2));
-    res.json({ success: true, name, location, image: items[name.toLowerCase()].image });
+    console.log('✅ 등록 완료:', result);
+    res.json({ 
+      success: true, 
+      name: result.name, 
+      location, 
+      image: imagePath 
+    });
   } catch (error) {
     console.error('저장 오류:', error);
     res.status(500).json({ error: '데이터를 저장할 수 없습니다.' });
@@ -105,44 +107,27 @@ app.post('/api/items', upload.single('image'), async (req, res) => {
 // 물건 찾기
 app.get('/api/search', async (req, res) => {
   try {
-    const query = req.query.q?.toLowerCase();
+    const query = req.query.q;
+    
+    console.log('=== 검색 요청 ===');
+    console.log('검색어:', query);
     
     if (!query) {
+      console.log('검색어 없음');
       return res.status(400).json({ error: '검색어를 입력해주세요.' });
     }
 
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    const items = JSON.parse(data);
+    const result = await db.searchItem(query);
     
-    // 정확한 매치 먼저 찾기
-    if (items[query]) {
-      const item = items[query];
-      return res.json({ 
-        found: true, 
-        location: typeof item === 'string' ? item : item.location,
-        image: typeof item === 'object' ? item.image : null,
-        name: query 
-      });
+    if (result.found) {
+      console.log('✅ 검색 성공:', result.name);
+    } else {
+      console.log('❌ 검색 결과 없음');
     }
     
-    // 부분 매치 찾기
-    const matches = Object.keys(items).filter(key => 
-      key.includes(query) || query.includes(key)
-    );
-    
-    if (matches.length > 0) {
-      const firstMatch = matches[0];
-      const item = items[firstMatch];
-      return res.json({ 
-        found: true, 
-        location: typeof item === 'string' ? item : item.location,
-        image: typeof item === 'object' ? item.image : null,
-        name: firstMatch 
-      });
-    }
-    
-    res.json({ found: false });
+    res.json(result);
   } catch (error) {
+    console.error('검색 오류:', error);
     res.status(500).json({ error: '검색 중 오류가 발생했습니다.' });
   }
 });
@@ -150,37 +135,112 @@ app.get('/api/search', async (req, res) => {
 // 물건 삭제
 app.delete('/api/items/:name', async (req, res) => {
   try {
-    const name = req.params.name.toLowerCase();
+    const name = req.params.name;
     
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    const items = JSON.parse(data);
+    console.log('=== 삭제 요청 ===');
+    console.log('물건 이름:', name);
     
-    if (items[name]) {
-      // 이미지 파일도 삭제
-      if (typeof items[name] === 'object' && items[name].image) {
-        try {
-          await fs.unlink(path.join(__dirname, items[name].image));
-        } catch (err) {
-          console.error('이미지 삭제 실패:', err);
-        }
+    // 이미지 정보 먼저 가져오기
+    const item = await db.getItem(name);
+    
+    if (!item) {
+      return res.status(404).json({ error: '물건을 찾을 수 없습니다.' });
+    }
+    
+    // 이미지 파일 삭제
+    if (item.image) {
+      try {
+        await fsPromises.unlink(path.join(__dirname, item.image));
+        console.log('이미지 삭제:', item.image);
+      } catch (err) {
+        console.error('이미지 삭제 실패:', err);
       }
-      
-      delete items[name];
-      await fs.writeFile(DATA_FILE, JSON.stringify(items, null, 2));
+    }
+    
+    // DB에서 삭제
+    const result = await db.deleteItem(name);
+    
+    if (result.success) {
+      console.log('✅ 삭제 완료:', name);
       res.json({ success: true });
     } else {
-      res.status(404).json({ error: '물건을 찾을 수 없습니다.' });
+      res.status(404).json({ error: result.message });
     }
   } catch (error) {
+    console.error('삭제 오류:', error);
     res.status(500).json({ error: '삭제 중 오류가 발생했습니다.' });
   }
 });
 
-// 서버 시작
-Promise.all([initDataFile(), initUploadDir()]).then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`물건 찾기 서버가 포트 ${PORT}에서 실행 중입니다.`);
-    console.log(`로컬: http://localhost:${PORT}`);
-    console.log(`네트워크: http://[라즈베리파이IP]:${PORT}`);
-  });
+// 데이터베이스 통계 (추가 기능)
+app.get('/api/stats', async (req, res) => {
+  try {
+    const items = await db.getAllItems();
+    const total = Object.keys(items).length;
+    const withImages = Object.values(items).filter(item => item.image).length;
+    
+    res.json({
+      total,
+      withImages,
+      withoutImages: total - withImages
+    });
+  } catch (error) {
+    console.error('통계 조회 오류:', error);
+    res.status(500).json({ error: '통계를 가져올 수 없습니다.' });
+  }
 });
+
+// 서버 시작
+async function startServer() {
+  try {
+    // 데이터베이스 초기화
+    await db.init();
+    
+    // 업로드 디렉토리 초기화
+    await initUploadDir();
+    
+    // HTTP 서버
+    http.createServer(app).listen(HTTP_PORT, '0.0.0.0', () => {
+      console.log(`HTTP 서버: http://[라즈베리파이IP]:${HTTP_PORT}`);
+    });
+
+    // HTTPS 서버 (인증서가 있는 경우)
+    const certPath = path.join(__dirname, 'cert.pem');
+    const keyPath = path.join(__dirname, 'key.pem');
+    
+    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+      const httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+      };
+      
+      https.createServer(httpsOptions, app).listen(HTTPS_PORT, '0.0.0.0', () => {
+        console.log(`HTTPS 서버: https://[라즈베리파이IP]:${HTTPS_PORT}`);
+        console.log('⚠️  자체 서명 인증서 경고가 나타나면 "고급" → "계속 진행"을 선택하세요');
+      });
+    } else {
+      console.log('\n📝 HTTPS 인증서를 생성하려면 다음 명령을 실행하세요:');
+      console.log('   npm run generate-cert');
+    }
+    
+    console.log('\n✅ 서버가 SQLite 데이터베이스와 함께 시작되었습니다!');
+  } catch (error) {
+    console.error('서버 시작 실패:', error);
+    process.exit(1);
+  }
+}
+
+// 종료 시 데이터베이스 정리
+process.on('SIGINT', () => {
+  console.log('\n서버 종료 중...');
+  db.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n서버 종료 중...');
+  db.close();
+  process.exit(0);
+});
+
+startServer();
