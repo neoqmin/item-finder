@@ -684,31 +684,63 @@
         function speak(text) {
             console.log('음성 출력 시도:', text);
             
-            if ('speechSynthesis' in window) {
-                // 기존 음성 중지
-                window.speechSynthesis.cancel();
-                
+            if (!('speechSynthesis' in window)) {
+                console.warn('음성 합성을 지원하지 않는 브라우저입니다.');
+                return;
+            }
+
+            // 기존 음성 완전히 중지
+            window.speechSynthesis.cancel();
+            
+            // iOS Safari에서는 약간의 지연이 필요할 수 있음
+            setTimeout(() => {
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'ko-KR';
                 utterance.rate = 0.9;
                 utterance.pitch = 1;
+                utterance.volume = 1; // 최대 볼륨
+                
+                // 한국어 음성 찾기 시도
+                const voices = window.speechSynthesis.getVoices();
+                const koreanVoice = voices.find(voice => voice.lang.includes('ko'));
+                if (koreanVoice) {
+                    utterance.voice = koreanVoice;
+                    console.log('한국어 음성 사용:', koreanVoice.name);
+                }
                 
                 utterance.onstart = function() {
-                    console.log('음성 출력 시작');
+                    console.log('✓ 음성 출력 시작');
                 };
                 
                 utterance.onend = function() {
-                    console.log('음성 출력 완료');
+                    console.log('✓ 음성 출력 완료');
                 };
                 
                 utterance.onerror = function(event) {
-                    console.error('음성 출력 오류:', event);
+                    console.error('❌ 음성 출력 오류:', event.error);
+                    
+                    // 오류 발생 시 재시도 (iOS Safari 버그 대응)
+                    if (event.error === 'interrupted') {
+                        console.log('재시도 중...');
+                        setTimeout(() => {
+                            window.speechSynthesis.speak(utterance);
+                        }, 100);
+                    }
                 };
                 
+                console.log('speak() 호출 - 볼륨:', utterance.volume);
                 window.speechSynthesis.speak(utterance);
-            } else {
-                console.warn('음성 합성을 지원하지 않는 브라우저입니다.');
-            }
+                
+                // iOS Safari에서 즉시 재생되지 않는 버그 대응
+                if (!window.speechSynthesis.speaking) {
+                    console.warn('⚠ speaking 상태가 아님, 재시도');
+                    setTimeout(() => {
+                        if (!window.speechSynthesis.speaking) {
+                            window.speechSynthesis.speak(utterance);
+                        }
+                    }, 100);
+                }
+            }, 100);
         }
 
         async function addItem() {

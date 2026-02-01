@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>음성 테스트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 15px;
+        }
+
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #1e40af;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #1e3a8a;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .log div {
+            margin-bottom: 5px;
+        }
+
+        .voice-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .voice-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #f9fafb;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔊 음성 테스트</h1>
+            <p class="subtitle">음성 합성(TTS) 기능 진단</p>
+
+            <div class="info-box">
+                <h3>📌 중요 확인 사항</h3>
+                <p>
+                    1. iPhone 무음 모드를 해제하세요 (옆면 스위치)<br>
+                    2. 볼륨을 키우세요<br>
+                    3. Safari 브라우저를 사용하세요<br>
+                    4. 이어폰이 연결되어 있다면 빼보세요
+                </p>
+            </div>
+
+            <!-- 기본 테스트 -->
+            <div class="test-section">
+                <div class="test-title">1️⃣ 기본 음성 테스트</div>
+                <div id="basicStatus" class="status info">테스트 대기 중</div>
+                <button class="btn-primary" onclick="testBasicVoice()">간단한 음성 테스트</button>
+                <div id="basicLog" class="log" style="display:none;"></div>
+            </div>
+
+            <!-- 한국어 테스트 -->
+            <div class="test-section">
+                <div class="test-title">2️⃣ 한국어 음성 테스트</div>
+                <div id="koreanStatus" class="status info">테스트 대기 중</div>
+                <button class="btn-success" onclick="testKoreanVoice()">한국어 음성 테스트</button>
+            </div>
+
+            <!-- 실제 메시지 테스트 -->
+            <div class="test-section">
+                <div class="test-title">3️⃣ 실제 메시지 테스트</div>
+                <div id="messageStatus" class="status info">테스트 대기 중</div>
+                <button class="btn-warning" onclick="testRealMessage()">실제 검색 결과 음성 테스트</button>
+            </div>
+
+            <!-- 음성 목록 -->
+            <div class="test-section">
+                <div class="test-title">4️⃣ 사용 가능한 음성 목록</div>
+                <button class="btn-primary" onclick="listVoices()">음성 목록 확인</button>
+                <div id="voiceList" class="voice-list" style="display:none;"></div>
+            </div>
+
+            <!-- 연속 테스트 -->
+            <div class="test-section">
+                <div class="test-title">5️⃣ 연속 재생 테스트</div>
+                <div id="multiStatus" class="status info">테스트 대기 중</div>
+                <button class="btn-primary" onclick="testMultipleVoices()">3번 연속 재생</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let voicesLoaded = false;
+
+        function log(elementId, message, type = 'info') {
+            const statusEl = document.getElementById(elementId);
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+            console.log(`[${type}] ${message}`);
+        }
+
+        function addLog(elementId, message) {
+            const logEl = document.getElementById(elementId);
+            if (logEl) {
+                logEl.style.display = 'block';
+                const timestamp = new Date().toLocaleTimeString('ko-KR');
+                const entry = document.createElement('div');
+                entry.textContent = `[${timestamp}] ${message}`;
+                logEl.appendChild(entry);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        }
+
+        // 음성 목록 로드 대기
+        if ('speechSynthesis' in window) {
+            speechSynthesis.onvoiceschanged = function() {
+                voicesLoaded = true;
+                console.log('음성 목록 로드 완료');
+            };
+        }
+
+        // 1. 기본 음성 테스트
+        function testBasicVoice() {
+            addLog('basicLog', '=== 기본 음성 테스트 시작 ===');
+            
+            if (!('speechSynthesis' in window)) {
+                log('basicStatus', '❌ 이 브라우저는 음성 합성을 지원하지 않습니다', 'error');
+                addLog('basicLog', 'ERROR: speechSynthesis not supported');
+                return;
+            }
+
+            addLog('basicLog', '✓ speechSynthesis 지원 확인');
+            log('basicStatus', '🔊 음성 재생 중... (3초 대기)', 'info');
+
+            try {
+                window.speechSynthesis.cancel();
+                addLog('basicLog', '이전 음성 취소');
+
+                const utterance = new SpeechSynthesisUtterance('Hello');
+                
+                utterance.onstart = function() {
+                    addLog('basicLog', '✓ 음성 재생 시작됨');
+                    log('basicStatus', '✅ 음성이 재생되고 있습니다!', 'success');
+                };
+
+                utterance.onend = function() {
+                    addLog('basicLog', '✓ 음성 재생 완료');
+                    log('basicStatus', '✅ 테스트 성공! 소리가 들렸나요?', 'success');
+                };
+
+                utterance.onerror = function(event) {
+                    addLog('basicLog', `ERROR: ${event.error}`);
+                    log('basicStatus', `❌ 오류: ${event.error}`, 'error');
+                };
+
+                addLog('basicLog', 'speak() 호출');
+                window.speechSynthesis.speak(utterance);
+                
+                // 타임아웃 체크
+                setTimeout(() => {
+                    if (window.speechSynthesis.speaking) {
+                        addLog('basicLog', '✓ 3초 후에도 재생 중');
+                    } else {
+                        addLog('basicLog', '⚠ 3초 후 재생 종료 확인');
+                    }
+                }, 3000);
+
+            } catch (error) {
+                addLog('basicLog', `EXCEPTION: ${error.message}`);
+                log('basicStatus', `❌ 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 2. 한국어 음성 테스트
+        function testKoreanVoice() {
+            if (!('speechSynthesis' in window)) {
+                log('koreanStatus', '❌ 음성 합성 미지원', 'error');
+                return;
+            }
+
+            log('koreanStatus', '🔊 한국어 음성 재생 중...', 'info');
+
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance('안녕하세요');
+            utterance.lang = 'ko-KR';
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+
+            utterance.onstart = function() {
+                console.log('한국어 음성 시작');
+                log('koreanStatus', '✅ 한국어 음성 재생 중!', 'success');
+            };
+
+            utterance.onend = function() {
+                console.log('한국어 음성 완료');
+                log('koreanStatus', '✅ 테스트 완료! 한국어 소리가 들렸나요?', 'success');
+            };
+
+            utterance.onerror = function(event) {
+                console.error('한국어 음성 오류:', event.error);
+                log('koreanStatus', `❌ 오류: ${event.error}`, 'error');
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 3. 실제 메시지 테스트
+        function testRealMessage() {
+            if (!('speechSynthesis' in window)) {
+                log('messageStatus', '❌ 음성 합성 미지원', 'error');
+                return;
+            }
+
+            const message = '잼은 찬장에 있습니다.';
+            log('messageStatus', `🔊 "${message}" 재생 중...`, 'info');
+
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(message);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+
+            utterance.onstart = function() {
+                console.log('실제 메시지 재생 시작');
+                log('messageStatus', '✅ 음성 재생 중!', 'success');
+            };
+
+            utterance.onend = function() {
+                console.log('실제 메시지 재생 완료');
+                log('messageStatus', '✅ 완료! 이 메시지가 들렸다면 정상입니다.', 'success');
+            };
+
+            utterance.onerror = function(event) {
+                console.error('실제 메시지 오류:', event.error);
+                log('messageStatus', `❌ 오류: ${event.error}`, 'error');
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 4. 음성 목록 확인
+        function listVoices() {
+            if (!('speechSynthesis' in window)) {
+                alert('음성 합성을 지원하지 않습니다.');
+                return;
+            }
+
+            const voices = window.speechSynthesis.getVoices();
+            const listEl = document.getElementById('voiceList');
+            listEl.style.display = 'block';
+            listEl.innerHTML = '';
+
+            if (voices.length === 0) {
+                listEl.innerHTML = '<div class="voice-item">음성 목록이 아직 로드되지 않았습니다. 잠시 후 다시 시도하세요.</div>';
+                return;
+            }
+
+            listEl.innerHTML = `<div class="voice-item"><strong>총 ${voices.length}개의 음성</strong></div>`;
+
+            const koreanVoices = voices.filter(v => v.lang.includes('ko'));
+            if (koreanVoices.length > 0) {
+                listEl.innerHTML += '<div class="voice-item" style="background:#d1fae5;"><strong>한국어 음성:</strong></div>';
+                koreanVoices.forEach(voice => {
+                    listEl.innerHTML += `<div class="voice-item">✓ ${voice.name} (${voice.lang})</div>`;
+                });
+            } else {
+                listEl.innerHTML += '<div class="voice-item" style="background:#fee2e2;">⚠ 한국어 음성이 없습니다. 기본 음성이 사용됩니다.</div>';
+            }
+        }
+
+        // 5. 연속 재생 테스트
+        let multiTestCount = 0;
+        function testMultipleVoices() {
+            if (!('speechSynthesis' in window)) {
+                log('multiStatus', '❌ 음성 합성 미지원', 'error');
+                return;
+            }
+
+            multiTestCount = 0;
+            log('multiStatus', '🔊 1번째 재생 중...', 'info');
+
+            speakMulti();
+        }
+
+        function speakMulti() {
+            if (multiTestCount >= 3) {
+                log('multiStatus', '✅ 3번 모두 재생 완료!', 'success');
+                return;
+            }
+
+            multiTestCount++;
+            const messages = ['첫번째', '두번째', '세번째'];
+
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(messages[multiTestCount - 1]);
+            utterance.lang = 'ko-KR';
+
+            utterance.onstart = function() {
+                log('multiStatus', `🔊 ${multiTestCount}번째 재생 중...`, 'info');
+            };
+
+            utterance.onend = function() {
+                console.log(`${multiTestCount}번째 완료`);
+                setTimeout(() => {
+                    speakMulti();
+                }, 500);
+            };
+
+            utterance.onerror = function(event) {
+                log('multiStatus', `❌ ${multiTestCount}번째 오류: ${event.error}`, 'error');
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 페이지 로드 시
+        console.log('음성 테스트 페이지 로드됨');
+        if ('speechSynthesis' in window) {
+            console.log('✓ speechSynthesis 사용 가능');
+            // 음성 목록 미리 로드
+            window.speechSynthesis.getVoices();
+        } else {
+            console.error('✗ speechSynthesis 사용 불가');
+            alert('이 브라우저는 음성 합성을 지원하지 않습니다.');
+        }
+    </script>
+</body>
+</html>
