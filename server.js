@@ -66,15 +66,20 @@ app.get('/api/items', async (req, res) => {
 // 물건 등록/수정 (이미지 포함)
 app.post('/api/items', upload.single('image'), async (req, res) => {
   try {
-    const { name, location } = req.body;
+    const { name, location, password } = req.body;
     
     console.log('=== 물건 등록 요청 ===');
     console.log('이름:', name);
     console.log('위치:', location);
+    console.log('비밀번호:', password ? '설정됨' : '없음');
     console.log('이미지:', req.file ? req.file.filename : '없음');
     
     if (!name || !location) {
       return res.status(400).json({ error: '물건 이름과 위치를 모두 입력해주세요.' });
+    }
+
+    if (!password) {
+      return res.status(400).json({ error: '비밀번호를 입력해주세요.' });
     }
 
     // 기존 아이템 확인 (이전 이미지 삭제용)
@@ -89,7 +94,7 @@ app.post('/api/items', upload.single('image'), async (req, res) => {
     }
     
     const imagePath = req.file ? `/uploads/${req.file.filename}` : (existing ? existing.image : null);
-    const result = await db.upsertItem(name, location, imagePath);
+    const result = await db.upsertItem(name, location, imagePath, password);
     
     console.log('✅ 등록 완료:', result);
     res.json({ 
@@ -136,15 +141,47 @@ app.get('/api/search', async (req, res) => {
 app.delete('/api/items/:name', async (req, res) => {
   try {
     const name = req.params.name;
+    const { password, adminPassword } = req.body;
     
     console.log('=== 삭제 요청 ===');
     console.log('물건 이름:', name);
+    console.log('비밀번호:', password ? '입력됨' : '없음');
+    console.log('관리자 비밀번호:', adminPassword ? '입력됨' : '없음');
     
     // 이미지 정보 먼저 가져오기
     const item = await db.getItem(name);
     
     if (!item) {
       return res.status(404).json({ error: '물건을 찾을 수 없습니다.' });
+    }
+
+    // 비밀번호 확인
+    let verification;
+    
+    // 관리자 비밀번호 우선 확인
+    if (adminPassword) {
+      // 고정 관리자 비밀번호 확인 (환경변수로 설정 가능)
+      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
+      
+      if (adminPassword === ADMIN_PASSWORD) {
+        console.log('✅ 관리자 권한으로 삭제');
+        verification = { valid: true, isAdmin: true };
+      } else {
+        return res.status(403).json({ 
+          error: '관리자 비밀번호가 일치하지 않습니다.',
+          requirePassword: true 
+        });
+      }
+    } else {
+      // 일반 비밀번호 확인
+      verification = await db.verifyPassword(name, password);
+      
+      if (!verification.valid) {
+        return res.status(403).json({ 
+          error: verification.message || '비밀번호가 일치하지 않습니다.',
+          requirePassword: true 
+        });
+      }
     }
     
     // 이미지 파일 삭제

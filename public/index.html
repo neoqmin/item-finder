@@ -425,6 +425,13 @@
                 <input type="text" id="itemLocation" placeholder="예: 찬장, 거실 테이블, 현관">
             </div>
             <div class="input-group">
+                <label for="itemPassword">비밀번호 (4자리)</label>
+                <input type="password" id="itemPassword" placeholder="삭제 시 필요합니다" maxlength="10" autocomplete="off">
+                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                    ⚠️ 잊어버리지 마세요! 비밀번호를 잊으면 관리자 비밀번호로만 삭제 가능합니다.
+                </small>
+            </div>
+            <div class="input-group">
                 <label for="itemImage">사진 (선택)</label>
                 <input type="file" id="itemImage" accept="image/*" capture="environment">
                 <div id="imagePreview" class="image-preview"></div>
@@ -758,6 +765,7 @@
         async function addItem() {
             const name = document.getElementById('itemName').value.trim();
             const location = document.getElementById('itemLocation').value.trim();
+            const password = document.getElementById('itemPassword').value.trim();
             const imageFile = document.getElementById('itemImage').files[0];
 
             if (!name || !location) {
@@ -765,10 +773,23 @@
                 return;
             }
 
+            if (!password) {
+                showMessage('비밀번호를 입력해주세요. (삭제 시 필요합니다)', 'error');
+                document.getElementById('itemPassword').focus();
+                return;
+            }
+
+            if (password.length < 4) {
+                showMessage('비밀번호는 최소 4자리 이상이어야 합니다.', 'error');
+                document.getElementById('itemPassword').focus();
+                return;
+            }
+
             try {
                 const formData = new FormData();
                 formData.append('name', name);
                 formData.append('location', location);
+                formData.append('password', password);
                 if (imageFile) {
                     formData.append('image', imageFile);
                 }
@@ -782,11 +803,13 @@
                     showMessage(`${name}이(가) ${location}에 등록되었습니다.`, 'success');
                     document.getElementById('itemName').value = '';
                     document.getElementById('itemLocation').value = '';
+                    document.getElementById('itemPassword').value = '';
                     document.getElementById('itemImage').value = '';
                     document.getElementById('imagePreview').innerHTML = '';
                     loadItems();
                 } else {
-                    showMessage('등록 중 오류가 발생했습니다.', 'error');
+                    const error = await response.json();
+                    showMessage(error.error || '등록 중 오류가 발생했습니다.', 'error');
                 }
             } catch (error) {
                 console.error('등록 오류:', error);
@@ -795,21 +818,52 @@
         }
 
         async function deleteItem(name) {
-            if (!confirm(`${name}을(를) 삭제하시겠습니까?`)) {
-                return;
+            // 비밀번호 입력 받기
+            const password = prompt(`"${name}" 삭제 비밀번호를 입력하세요:\n\n(관리자라면 관리자 비밀번호를 입력하세요)`);
+            
+            if (!password) {
+                return; // 취소
             }
 
             try {
-                const response = await fetch(`/api/items/${encodeURIComponent(name)}`, {
-                    method: 'DELETE'
+                // 먼저 일반 비밀번호로 시도
+                let response = await fetch(`/api/items/${encodeURIComponent(name)}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
                 });
 
-                if (response.ok) {
-                    showMessage(`${name}이(가) 삭제되었습니다.`, 'success');
-                    loadItems();
-                } else {
-                    showMessage('삭제 중 오류가 발생했습니다.', 'error');
+                // 일반 비밀번호가 틀리면 관리자 비밀번호로 재시도
+                if (!response.ok) {
+                    const error = await response.json();
+                    
+                    if (error.requirePassword) {
+                        // 관리자 비밀번호 확인
+                        const isAdmin = confirm('일반 비밀번호가 일치하지 않습니다.\n\n관리자 비밀번호로 삭제하시겠습니까?');
+                        
+                        if (isAdmin) {
+                            response = await fetch(`/api/items/${encodeURIComponent(name)}`, {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ adminPassword: password })
+                            });
+                            
+                            if (!response.ok) {
+                                const adminError = await response.json();
+                                showMessage(adminError.error || '삭제 실패', 'error');
+                                return;
+                            }
+                        } else {
+                            return;
+                        }
+                    } else {
+                        showMessage(error.error || '삭제 중 오류가 발생했습니다.', 'error');
+                        return;
+                    }
                 }
+
+                showMessage(`${name}이(가) 삭제되었습니다.`, 'success');
+                loadItems();
             } catch (error) {
                 console.error('삭제 오류:', error);
                 showMessage('삭제 중 오류가 발생했습니다.', 'error');

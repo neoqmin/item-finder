@@ -33,6 +33,7 @@ class ItemDatabase {
         name TEXT NOT NULL UNIQUE COLLATE NOCASE,
         location TEXT NOT NULL,
         image TEXT,
+        password TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -70,7 +71,7 @@ class ItemDatabase {
   }
 
   // 물건 추가/수정
-  async upsertItem(name, location, image = null) {
+  async upsertItem(name, location, image = null, password = null) {
     const nameLower = name.toLowerCase();
     
     try {
@@ -78,7 +79,7 @@ class ItemDatabase {
       const existing = await this.getItem(nameLower);
       
       if (existing) {
-        // 업데이트
+        // 업데이트 (비밀번호는 변경하지 않음)
         const stmt = this.db.prepare(`
           UPDATE items 
           SET location = ?, image = ?, updated_at = CURRENT_TIMESTAMP 
@@ -95,13 +96,13 @@ class ItemDatabase {
           updated: true 
         });
       } else {
-        // 삽입
+        // 삽입 (비밀번호 포함)
         const stmt = this.db.prepare(`
-          INSERT INTO items (name, location, image) 
-          VALUES (?, ?, ?)
+          INSERT INTO items (name, location, image, password) 
+          VALUES (?, ?, ?, ?)
         `);
         
-        const info = stmt.run(nameLower, location, image);
+        const info = stmt.run(nameLower, location, image, password);
         
         return Promise.resolve({ 
           success: true, 
@@ -185,6 +186,51 @@ class ItemDatabase {
       return Promise.resolve({ 
         success: true, 
         deleted: info.changes 
+      });
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+
+  // 비밀번호 확인 (물건 삭제 권한 체크)
+  async verifyPassword(name, password, adminPassword = null) {
+    try {
+      const item = await this.getItem(name);
+      
+      if (!item) {
+        return Promise.resolve({ 
+          valid: false, 
+          message: '물건을 찾을 수 없습니다.' 
+        });
+      }
+
+      // 비밀번호가 설정되지 않은 물건 (이전 버전)
+      if (!item.password) {
+        return Promise.resolve({ 
+          valid: true, 
+          isLegacy: true 
+        });
+      }
+
+      // 관리자 비밀번호 확인 (우선)
+      if (adminPassword && item.password === `ADMIN:${adminPassword}`) {
+        return Promise.resolve({ 
+          valid: true, 
+          isAdmin: true 
+        });
+      }
+
+      // 일반 비밀번호 확인
+      if (item.password === password) {
+        return Promise.resolve({ 
+          valid: true, 
+          isAdmin: false 
+        });
+      }
+
+      return Promise.resolve({ 
+        valid: false, 
+        message: '비밀번호가 일치하지 않습니다.' 
       });
     } catch (err) {
       return Promise.reject(err);
