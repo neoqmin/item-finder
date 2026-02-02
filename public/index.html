@@ -442,6 +442,16 @@
         </div>
 
         <div class="card">
+            <div class="section-title">⌨️ 텍스트로 물건 찾기</div>
+            <p class="subtitle" style="margin-bottom: 15px;">음성 인식이 안 될 때 사용하세요</p>
+            <div class="input-group">
+                <label for="searchInput">물건 이름 입력</label>
+                <input type="text" id="searchInput" placeholder="예: 잼, 리모컨, 열쇠" onkeypress="handleSearchEnter(event)">
+            </div>
+            <button class="btn-primary" onclick="textSearch()">🔍 검색하기</button>
+        </div>
+
+        <div class="card">
             <div class="section-title">📋 등록된 물건 목록</div>
             <div id="itemsList" class="items-list">
                 <div class="empty-state">등록된 물건이 없습니다</div>
@@ -593,6 +603,8 @@
                     showResultModal(data.name, data.location, data.image);
                     speak(message);
                     document.getElementById('voiceStatus').textContent = message;
+                    // 검색창 초기화
+                    document.getElementById('searchInput').value = '';
                 } else {
                     const message = `${itemName}을(를) 찾을 수 없습니다. 먼저 등록해주세요.`;
                     showNotFoundModal(itemName);
@@ -856,6 +868,28 @@
                 addItem();
             }
         });
+
+        // 텍스트 검색 함수
+        function textSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                showMessage('물건 이름을 입력해주세요.', 'error');
+                searchInput.focus();
+                return;
+            }
+            
+            console.log('텍스트 검색:', query);
+            searchItem(query);
+        }
+
+        // Enter 키로 검색
+        function handleSearchEnter(event) {
+            if (event.key === 'Enter') {
+                textSearch();
+            }
+        }
     </script>
 </body>
 </html>

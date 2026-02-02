@@ -95,6 +95,15 @@
             margin-bottom: 10px;
         }
 
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
         .btn-voice {
             background: #10b981;
             color: white;
@@ -314,7 +323,11 @@
                 <span id="voiceBtnText">음성 검색 시작</span>
             </button>
 
-            <div class="section-title">📋 디버그 로그</div>
+            <div class="section-title" style="margin-top: 30px;">⌨️ 텍스트 검색 (음성 안 될 때)</div>
+            <input type="text" id="searchInput" placeholder="물건 이름 입력 (예: 잼)" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; margin-bottom: 10px;" onkeypress="handleSearchEnter(event)">
+            <button class="btn-primary" onclick="textSearch()">🔍 검색하기</button>
+
+            <div class="section-title" style="margin-top: 30px;">📋 디버그 로그</div>
             <button class="btn-clear" onclick="clearLogs()">로그 지우기</button>
             <div class="debug-log" id="debugLog">
                 <div class="info">로그가 여기에 표시됩니다...</div>
@@ -484,6 +497,8 @@
                     document.getElementById('voiceStatus').textContent = message;
                     showResultModal(data.name, data.location, data.image);
                     speak(message);
+                    // 검색창 초기화
+                    document.getElementById('searchInput').value = '';
                 } else {
                     const message = `${itemName}을(를) 찾을 수 없습니다.`;
                     log(`⚠️ 검색 실패: ${message}`, 'error');
@@ -642,6 +657,28 @@
         // 페이지 로드 완료
         log('✅ 디버그 페이지 로드 완료', 'success');
         log('💡 음성 검색 버튼을 눌러 테스트하세요', 'info');
+
+        // 텍스트 검색 함수
+        function textSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                log('⚠️ 검색어가 비어있습니다', 'error');
+                searchInput.focus();
+                return;
+            }
+            
+            log(`⌨️ 텍스트 검색 시작: "${query}"`, 'info');
+            searchItem(query);
+        }
+
+        // Enter 키로 검색
+        function handleSearchEnter(event) {
+            if (event.key === 'Enter') {
+                textSearch();
+            }
+        }
     </script>
 </body>
 </html>
